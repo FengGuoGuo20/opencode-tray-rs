@@ -10,3 +10,14 @@ html, body, #root {
   overflow: hidden;
   background: transparent;
 }
+
+/* 拖拽区域样式 */
+[data-tauri-drag-region] {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: grab;
+}
+
+[data-tauri-drag-region]:active {
+  cursor: grabbing;
+}

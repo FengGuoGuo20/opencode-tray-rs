@@ -38,8 +38,8 @@ export default function Panel() {
 
   return (
     <div className="w-full h-full bg-[#0F172A] text-[#E2E8F0] overflow-auto p-5 select-text">
-      {/* 标题栏 */}
-      <div className="flex items-center justify-between mb-4">
+      {/* 标题栏 - 可拖拽 */}
+      <div className="flex items-center justify-between mb-4" data-tauri-drag-region>
         <h1 className="text-lg font-bold text-[#3B82F6]">📊 OpenCodeTray 用量统计</h1>
         <div className="flex items-center gap-3">
           <span className="text-xs text-[#64748B]">

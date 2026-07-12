@@ -31,11 +31,6 @@
         "enable": true,
         "scope": []
       }
-    },
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true,
-      "tooltip": "OpenCodeTray"
     }
   },
   "bundle": {

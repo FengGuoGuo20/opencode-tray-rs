@@ -39,7 +39,7 @@ pub fn get_today_stats() -> UsageStats {
             COALESCE(SUM(cache_read_tokens), 0),
             COALESCE(SUM(cache_creation_tokens), 0),
             0 as reasoning_tokens,
-            COALESCE(CAST(SUM(total_cost_usd) AS REAL), 0),
+            COALESCE(SUM(CAST(total_cost_usd AS REAL)), 0),
             COUNT(*)
          FROM proxy_request_logs
          WHERE created_at >= $1"
@@ -85,7 +85,7 @@ pub fn get_week_stats() -> UsageStats {
             COALESCE(SUM(cache_read_tokens), 0),
             COALESCE(SUM(cache_creation_tokens), 0),
             0 as reasoning_tokens,
-            COALESCE(CAST(SUM(total_cost_usd) AS REAL), 0),
+            COALESCE(SUM(CAST(total_cost_usd AS REAL)), 0),
             COUNT(*)
          FROM proxy_request_logs
          WHERE created_at >= $1"
@@ -129,7 +129,7 @@ pub fn get_daily_usage(days: i32) -> Vec<DailyUsage> {
             COALESCE(SUM(cache_read_tokens), 0),
             COALESCE(SUM(cache_creation_tokens), 0),
             0 as reasoning_tokens,
-            COALESCE(CAST(SUM(total_cost_usd) AS REAL), 0),
+            COALESCE(SUM(CAST(total_cost_usd AS REAL)), 0),
             COUNT(*)
          FROM proxy_request_logs
          WHERE created_at >= $1
@@ -181,7 +181,7 @@ pub fn get_today_model_stats() -> Vec<ModelUsage> {
             COALESCE(SUM(cache_read_tokens), 0),
             COALESCE(SUM(cache_creation_tokens), 0),
             0 as reasoning_tokens,
-            COALESCE(CAST(SUM(total_cost_usd) AS REAL), 0),
+            COALESCE(SUM(CAST(total_cost_usd AS REAL)), 0),
             COUNT(*)
          FROM proxy_request_logs
          WHERE created_at >= $1
@@ -232,7 +232,7 @@ pub fn get_month_stats() -> UsageStats {
             COALESCE(SUM(cache_read_tokens), 0),
             COALESCE(SUM(cache_creation_tokens), 0),
             0 as reasoning_tokens,
-            COALESCE(CAST(SUM(total_cost_usd) AS REAL), 0),
+            COALESCE(SUM(CAST(total_cost_usd AS REAL)), 0),
             COUNT(*)
          FROM proxy_request_logs
          WHERE created_at >= $1"
@@ -273,7 +273,7 @@ pub fn get_all_time_stats() -> UsageStats {
             COALESCE(SUM(cache_read_tokens), 0),
             COALESCE(SUM(cache_creation_tokens), 0),
             0 as reasoning_tokens,
-            COALESCE(CAST(SUM(total_cost_usd) AS REAL), 0),
+            COALESCE(SUM(CAST(total_cost_usd AS REAL)), 0),
             COUNT(*)
          FROM proxy_request_logs
          WHERE created_at >= 0"

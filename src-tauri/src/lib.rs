@@ -13,15 +13,14 @@ pub const FLOATING_BAR_WINDOW_LABEL: &str = "floating-bar";
 const FLOATING_BAR_WIDTH: f64 = 150.0;
 const FLOATING_BAR_HEIGHT: f64 = 26.0;
 
-/// 计算悬浮条默认位置（屏幕右上角，距边缘 24px）
+/// 计算悬浮条默认位置（屏幕右下角任务栏上方，距边缘 24px）
 fn fallback_position(app: &tauri::AppHandle) -> (f64, f64) {
     let margin = 24.0;
     if let Ok(Some(monitor)) = app.primary_monitor() {
-        let position = monitor.position();
-        let size = monitor.size();
-        let x = position.x as f64 + size.width as f64 - FLOATING_BAR_WIDTH - margin;
-        let y = position.y as f64 + margin;
-        return (x.max(position.x as f64), y.max(position.y as f64));
+        let work_area = monitor.work_area();
+        let x = work_area.position.x as f64 + work_area.size.width as f64 - FLOATING_BAR_WIDTH - margin;
+        let y = work_area.position.y as f64 + work_area.size.height as f64 - FLOATING_BAR_HEIGHT - margin;
+        return (x.max(work_area.position.x as f64), y.max(work_area.position.y as f64));
     }
     (margin, margin)
 }
