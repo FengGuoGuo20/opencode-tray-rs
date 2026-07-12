@@ -106,6 +106,18 @@ pub fn get_week_stats() -> UsageStats {
     UsageStats::default()
 }
 
+/// 获取本月统计
+pub fn get_month_stats() -> UsageStats {
+    // TODO: 实现月统计
+    UsageStats::default()
+}
+
+/// 获取全部统计
+pub fn get_all_time_stats() -> UsageStats {
+    // TODO: 实现全部统计
+    UsageStats::default()
+}
+
 /// 获取每日用量
 pub fn get_daily_usage(_days: i32) -> Vec<DailyUsage> {
     // TODO: 实现每日用量

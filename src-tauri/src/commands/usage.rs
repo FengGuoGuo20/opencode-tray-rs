@@ -20,22 +20,29 @@ pub struct UsageStats {
 }
 
 /// 每日用量
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DailyUsage {
     pub date: String,
     pub total_input_tokens: i64,
     pub total_output_tokens: i64,
+    pub total_cache_read_tokens: i64,
+    pub total_cache_write_tokens: i64,
+    pub total_reasoning_tokens: i64,
     pub total_cost_usd: f64,
+    pub session_count: i64,
 }
 
 /// 模型用量
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelUsage {
     pub model: String,
     pub input_tokens: i64,
     pub output_tokens: i64,
+    pub cache_read_tokens: i64,
+    pub cache_write_tokens: i64,
+    pub reasoning_tokens: i64,
     pub cost_usd: f64,
     pub sessions: i64,
 }
@@ -59,16 +66,10 @@ pub struct MemoryInfo {
     pub available_gb: f64,
 }
 
-/// 合并五数据源的今日统计
-fn merge_today_stats() -> UsageStats {
+/// 合并多个 UsageStats（所有字段求和）
+fn merge_stats(stats: &[UsageStats]) -> UsageStats {
     let mut total = UsageStats::default();
-    let oc = crate::services::opencode::get_today_stats();
-    let cc = crate::services::ccswitch::get_today_stats();
-    let wb = crate::services::workbuddy::get_today_stats();
-    let hm = crate::services::hermes::get_today_stats();
-    let zc = crate::services::zcode::get_today_stats();
-
-    for s in [&oc, &cc, &wb, &hm, &zc] {
+    for s in stats {
         total.input_tokens += s.input_tokens;
         total.output_tokens += s.output_tokens;
         total.cache_read_tokens += s.cache_read_tokens;
@@ -80,34 +81,106 @@ fn merge_today_stats() -> UsageStats {
     total
 }
 
+/// 合并多个 DailyUsage 列表（按日期分组求和）
+fn merge_daily_usage(lists: Vec<Vec<DailyUsage>>) -> Vec<DailyUsage> {
+    let mut map: std::collections::HashMap<String, DailyUsage> = std::collections::HashMap::new();
+    for list in lists {
+        for usage in list {
+            let entry = map.entry(usage.date.clone()).or_insert_with(|| DailyUsage {
+                date: usage.date.clone(),
+                ..Default::default()
+            });
+            entry.total_input_tokens += usage.total_input_tokens;
+            entry.total_output_tokens += usage.total_output_tokens;
+            entry.total_cache_read_tokens += usage.total_cache_read_tokens;
+            entry.total_cache_write_tokens += usage.total_cache_write_tokens;
+            entry.total_reasoning_tokens += usage.total_reasoning_tokens;
+            entry.total_cost_usd += usage.total_cost_usd;
+            entry.session_count += usage.session_count;
+        }
+    }
+    let mut result: Vec<DailyUsage> = map.into_values().collect();
+    result.sort_by(|a, b| a.date.cmp(&b.date));
+    result
+}
+
+/// 合并多个 ModelUsage 列表（扁平拼接，按 token 总量降序排列）
+fn merge_model_stats(lists: Vec<Vec<ModelUsage>>) -> Vec<ModelUsage> {
+    let mut all: Vec<ModelUsage> = lists.into_iter().flatten().collect();
+    all.sort_by(|a, b| {
+        let ta = a.input_tokens + a.output_tokens;
+        let tb = b.input_tokens + b.output_tokens;
+        tb.cmp(&ta)
+    });
+    all
+}
+
+/// 收集五数据源的今日统计
+fn collect_today_stats() -> [UsageStats; 5] {
+    [
+        crate::services::opencode::get_today_stats(),
+        crate::services::ccswitch::get_today_stats(),
+        crate::services::workbuddy::get_today_stats(),
+        crate::services::hermes::get_today_stats(),
+        crate::services::zcode::get_today_stats(),
+    ]
+}
+
+/// 收集五数据源的周统计
+fn collect_week_stats() -> [UsageStats; 5] {
+    [
+        crate::services::opencode::get_week_stats(),
+        crate::services::ccswitch::get_week_stats(),
+        crate::services::workbuddy::get_week_stats(),
+        crate::services::hermes::get_week_stats(),
+        crate::services::zcode::get_week_stats(),
+    ]
+}
+
+/// 收集五数据源的月统计
+fn collect_month_stats() -> [UsageStats; 5] {
+    [
+        crate::services::opencode::get_month_stats(),
+        crate::services::ccswitch::get_month_stats(),
+        crate::services::workbuddy::get_month_stats(),
+        crate::services::hermes::get_month_stats(),
+        crate::services::zcode::get_month_stats(),
+    ]
+}
+
+/// 收集五数据源的全部统计
+fn collect_all_time_stats() -> [UsageStats; 5] {
+    [
+        crate::services::opencode::get_all_time_stats(),
+        crate::services::ccswitch::get_all_time_stats(),
+        crate::services::workbuddy::get_all_time_stats(),
+        crate::services::hermes::get_all_time_stats(),
+        crate::services::zcode::get_all_time_stats(),
+    ]
+}
+
 /// 获取今日用量统计
 #[tauri::command]
 pub async fn get_today_stats(_state: tauri::State<'_, AppState>) -> Result<UsageStats, String> {
-    Ok(merge_today_stats())
+    Ok(merge_stats(&collect_today_stats()))
 }
 
 /// 获取本周用量统计
 #[tauri::command]
 pub async fn get_week_stats(_state: tauri::State<'_, AppState>) -> Result<UsageStats, String> {
-    let total = UsageStats::default();
-    // TODO: 合并五数据源周统计
-    Ok(total)
+    Ok(merge_stats(&collect_week_stats()))
 }
 
 /// 获取本月用量统计
 #[tauri::command]
 pub async fn get_month_stats(_state: tauri::State<'_, AppState>) -> Result<UsageStats, String> {
-    let total = UsageStats::default();
-    // TODO: 合并五数据源月统计
-    Ok(total)
+    Ok(merge_stats(&collect_month_stats()))
 }
 
 /// 获取全部用量统计
 #[tauri::command]
 pub async fn get_all_time_stats(_state: tauri::State<'_, AppState>) -> Result<UsageStats, String> {
-    let total = UsageStats::default();
-    // TODO: 合并五数据源全部统计
-    Ok(total)
+    Ok(merge_stats(&collect_all_time_stats()))
 }
 
 /// 获取每日用量（最近 N 天）
@@ -116,9 +189,13 @@ pub async fn get_daily_usage(
     _state: tauri::State<'_, AppState>,
     days: i32,
 ) -> Result<Vec<DailyUsage>, String> {
-    // TODO: 合并五数据源每日数据
-    let _ = days;
-    Ok(vec![])
+    Ok(merge_daily_usage(vec![
+        crate::services::opencode::get_daily_usage(days),
+        crate::services::ccswitch::get_daily_usage(days),
+        crate::services::workbuddy::get_daily_usage(days),
+        crate::services::hermes::get_daily_usage(days),
+        crate::services::zcode::get_daily_usage(days),
+    ]))
 }
 
 /// 获取今日模型分布
@@ -126,8 +203,13 @@ pub async fn get_daily_usage(
 pub async fn get_today_model_stats(
     _state: tauri::State<'_, AppState>,
 ) -> Result<Vec<ModelUsage>, String> {
-    // TODO: 合并五数据源模型分布
-    Ok(vec![])
+    Ok(merge_model_stats(vec![
+        crate::services::opencode::get_today_model_stats(),
+        crate::services::ccswitch::get_today_model_stats(),
+        crate::services::workbuddy::get_today_model_stats(),
+        crate::services::hermes::get_today_model_stats(),
+        crate::services::zcode::get_today_model_stats(),
+    ]))
 }
 
 /// 获取内存使用信息
@@ -152,7 +234,7 @@ pub async fn get_memory_usage() -> Result<MemoryInfo, String> {
 /// 获取悬浮条显示数据
 #[tauri::command]
 pub async fn get_tray_display(_state: tauri::State<'_, AppState>) -> Result<TrayDisplay, String> {
-    let today = merge_today_stats();
+    let today = merge_stats(&collect_today_stats());
     let mem = get_memory_usage().await?;
 
     let token_text = format_tokens(today.input_tokens + today.output_tokens);
@@ -167,7 +249,7 @@ pub async fn get_tray_display(_state: tauri::State<'_, AppState>) -> Result<Tray
 
 /// 刷新用量数据并推送到前端
 pub async fn refresh_usage_data(app: &tauri::AppHandle) -> Result<(), String> {
-    let today = merge_today_stats();
+    let today = merge_stats(&collect_today_stats());
     let mem = get_memory_usage().await?;
 
     let token_text = format_tokens(today.input_tokens + today.output_tokens);
@@ -179,6 +261,10 @@ pub async fn refresh_usage_data(app: &tauri::AppHandle) -> Result<(), String> {
         "costUsd": today.cost_usd,
         "inputTokens": today.input_tokens,
         "outputTokens": today.output_tokens,
+        "cacheReadTokens": today.cache_read_tokens,
+        "cacheWriteTokens": today.cache_write_tokens,
+        "reasoningTokens": today.reasoning_tokens,
+        "sessions": today.sessions,
     }));
 
     Ok(())

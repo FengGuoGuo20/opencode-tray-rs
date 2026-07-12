@@ -11,12 +11,12 @@ use std::path::Path;
 /// 以只读模式打开 SQLite 数据库
 ///
 /// 使用 `PRAGMA query_only` 确保不会意外写入。
-/// 启用 WAL 模式以支持并发读取。
+/// 不设置 journal_mode（只读连接无法修改 WAL 模式）。
 pub fn open_read_only(path: &Path) -> Result<Connection, String> {
     let conn = Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
         .map_err(|e| format!("打开数据库失败 {}: {e}", path.display()))?;
 
-    conn.execute_batch("PRAGMA query_only = ON; PRAGMA journal_mode = WAL;")
+    conn.execute_batch("PRAGMA query_only = ON;")
         .map_err(|e| format!("设置 PRAGMA 失败: {e}"))?;
 
     Ok(conn)
