@@ -5,20 +5,24 @@
 
 #![allow(dead_code)]
 
-use crate::commands::usage::{DailyUsage, ModelUsage, UsageStats};
+use crate::commands::usage::{DailyUsage, ModelUsage, SourceReport, UsageStats};
 use crate::db::helper;
 use chrono::TimeZone;
 use std::collections::HashMap;
 
-/// 获取 WorkBuddy 项目目录
+const SOURCE_ID: &str = "workbuddy";
+const SOURCE_NAME: &str = "WorkBuddy";
+const DETAIL: &str = "projects/**/*.jsonl";
+
+/// 解析后的项目目录（含 override 展开），不检查存在性
+fn resolved_dir() -> std::path::PathBuf {
+    let settings = crate::services::current_settings();
+    crate::services::paths::workbuddy_dir(&settings)
+}
+
+/// 获取 WorkBuddy 项目目录（支持设置覆盖）
 pub fn get_data_dir() -> Option<std::path::PathBuf> {
-    let home = dirs::home_dir()?;
-    let dir = home.join(".workbuddy/projects");
-    if dir.exists() {
-        Some(dir)
-    } else {
-        None
-    }
+    crate::services::paths::existing(resolved_dir())
 }
 
 /// 从 JSON 值中提取一条记录的 token 数据，若全部为 0 则返回 None
@@ -36,10 +40,19 @@ fn extract_record(json: &serde_json::Value) -> Option<(i64, i64, i64, i64, i64, 
     }
 
     if let Some(raw) = json.pointer("/providerData/rawUsage") {
-        cache_read += raw.get("cached_tokens")
-            .or_else(|| raw.get("prompt_cache_hit_tokens"))
+        // WPF 语义：先取 prompt_cache_hit_tokens，若 cached_tokens > 0 则覆盖。
+        // 不能用 Option::or_else：cached_tokens 常为 0 但字段存在 → Some(0) 会短路，
+        // 导致永远取不到 prompt_cache_hit_tokens（曾导致 cache_read 恒为 0）。
+        let mut cr = raw
+            .get("prompt_cache_hit_tokens")
             .and_then(|v| v.as_i64())
             .unwrap_or(0);
+        if let Some(cached) = raw.get("cached_tokens").and_then(|v| v.as_i64()) {
+            if cached > 0 {
+                cr = cached;
+            }
+        }
+        cache_read += cr;
         cache_write += raw.get("prompt_cache_write_tokens")
             .and_then(|v| v.as_i64())
             .unwrap_or(0);
@@ -59,7 +72,19 @@ fn extract_record(json: &serde_json::Value) -> Option<(i64, i64, i64, i64, i64, 
 
 /// 获取今日统计
 pub fn get_today_stats() -> UsageStats {
-    get_stats_since(helper::today_start_epoch_ms() as u64)
+    today_report().stats
+}
+
+/// 今日诊断报告（含状态/路径/错误），get_today_stats 委托给它保证口径一致
+pub fn today_report() -> SourceReport {
+    let dir = resolved_dir();
+    let path_str = dir.display().to_string();
+    if !dir.exists() {
+        return SourceReport::not_found(SOURCE_ID, SOURCE_NAME, path_str);
+    }
+    // get_stats_since 内部已用 resolved_dir，此处无需再传；扫描失败不可见但会返回 0
+    let stats = get_stats_since(helper::today_start_epoch_ms() as u64);
+    SourceReport::ok(SOURCE_ID, SOURCE_NAME, path_str, DETAIL, stats)
 }
 
 /// 获取本周统计

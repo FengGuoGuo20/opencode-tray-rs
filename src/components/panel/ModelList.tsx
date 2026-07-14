@@ -5,24 +5,35 @@ import type { ModelUsage } from "../../lib/commands";
 interface ModelListProps {
   models: ModelUsage[];
   fmt: (n: number | undefined) => string;
-  fmtCost: (n: number | undefined) => string;
 }
 
-export default function ModelList({ models, fmt, fmtCost }: ModelListProps) {
+export default function ModelList({ models, fmt }: ModelListProps) {
   if (models.length === 0) {
     return <div className="text-xs text-[#64748B] py-2">暂无数据</div>;
   }
 
-  // 计算最大 token 用于进度条
+  // 计算最大 token 用于进度条（含缓存/推理，与总 token 口径一致）
   const maxTokens = Math.max(
-    ...models.map((m) => m.inputTokens + m.outputTokens),
+    ...models.map(
+      (m) =>
+        m.inputTokens +
+        m.outputTokens +
+        m.cacheReadTokens +
+        m.cacheWriteTokens +
+        m.reasoningTokens
+    ),
     1
   );
 
   return (
     <div className="space-y-1.5">
       {models.map((m, i) => {
-        const total = m.inputTokens + m.outputTokens;
+        const total =
+          m.inputTokens +
+          m.outputTokens +
+          m.cacheReadTokens +
+          m.cacheWriteTokens +
+          m.reasoningTokens;
         const pct = (total / maxTokens) * 100;
 
         return (
@@ -42,9 +53,6 @@ export default function ModelList({ models, fmt, fmtCost }: ModelListProps) {
 
             {/* Token 数 */}
             <div className="w-16 text-right text-[#94A3B8] font-mono">{fmt(total)}</div>
-
-            {/* 费用 */}
-            <div className="w-16 text-right text-[#F59E0B] font-mono">{fmtCost(m.costUsd)}</div>
 
             {/* 会话数 */}
             <div className="w-10 text-right text-[#64748B]">{m.sessions}次</div>

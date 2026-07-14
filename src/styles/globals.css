@@ -11,13 +11,25 @@ html, body, #root {
   background: transparent;
 }
 
-/* 拖拽区域样式 */
+/* 拖拽区域样式 — Tauri 2 需要 -webkit-app-region: drag 配合 data-tauri-drag-region */
 [data-tauri-drag-region] {
   -webkit-user-select: none;
   user-select: none;
   cursor: grab;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
 [data-tauri-drag-region]:active {
   cursor: grabbing;
+}
+
+/* 拖拽区域内的交互元素必须排除 */
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] input,
+[data-tauri-drag-region] select,
+[data-tauri-drag-region] [data-tauri-drag-region-no-drag] {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }

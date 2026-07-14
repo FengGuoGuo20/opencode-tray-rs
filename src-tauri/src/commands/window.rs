@@ -8,6 +8,12 @@ pub async fn show_panel(app: tauri::AppHandle) -> Result<(), String> {
     crate::show_main_window(&app)
 }
 
+/// 显示设置窗口
+#[tauri::command]
+pub async fn show_settings(app: tauri::AppHandle) -> Result<(), String> {
+    crate::show_settings_window(&app)
+}
+
 /// 切换悬浮条显示/隐藏
 #[tauri::command]
 pub async fn toggle_floating_bar(app: tauri::AppHandle) -> Result<(), String> {
@@ -25,7 +31,7 @@ pub async fn toggle_floating_bar(app: tauri::AppHandle) -> Result<(), String> {
     }
 }
 
-/// 设置悬浮条位置
+/// 设置悬浮条位置并持久化
 #[tauri::command]
 pub async fn set_floating_bar_position(
     app: tauri::AppHandle,
@@ -34,13 +40,8 @@ pub async fn set_floating_bar_position(
 ) -> Result<(), String> {
     if let Some(window) = app.get_webview_window(crate::FLOATING_BAR_WINDOW_LABEL) {
         window
-            .set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-                x: x.round() as i32,
-                y: y.round() as i32,
-            }))
+            .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }))
             .map_err(|e| format!("设置悬浮条位置失败: {e}"))?;
-
-        // TODO: 保存位置到 Store
     }
-    Ok(())
+    crate::commands::settings::save_floating_bar_position(&app, x, y)
 }

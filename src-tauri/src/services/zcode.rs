@@ -7,33 +7,28 @@
 #![allow(dead_code)]
 //! 无 cost 字段（ZCode 费用始终为 0）
 
-use crate::commands::usage::{DailyUsage, ModelUsage, UsageStats};
+use crate::commands::usage::{DailyUsage, ModelUsage, SourceReport, UsageStats};
 use crate::db::helper;
 
-/// 获取 ZCode 数据库路径
-pub fn get_db_path() -> Option<std::path::PathBuf> {
-    let home = dirs::home_dir()?;
-    Some(home.join(".zcode/cli/db/db.sqlite"))
+const SOURCE_ID: &str = "zcode";
+const SOURCE_NAME: &str = "ZCode";
+const DETAIL: &str = "model_usage 表（无费用）";
+
+/// 解析后的数据库路径（含 override 展开），不检查存在性
+fn resolved_path() -> std::path::PathBuf {
+    let settings = crate::services::current_settings();
+    crate::services::paths::zcode_db(&settings)
 }
 
-/// 获取今日统计
-pub fn get_today_stats() -> UsageStats {
-    let db_path = match get_db_path() {
-        Some(p) if p.exists() => p,
-        _ => return UsageStats::default(),
-    };
+/// 获取 ZCode 数据库路径（支持设置覆盖）
+pub fn get_db_path() -> Option<std::path::PathBuf> {
+    crate::services::paths::existing(resolved_path())
+}
 
-    let conn = match helper::open_read_only(&db_path) {
-        Ok(c) => c,
-        Err(e) => {
-            log::warn!("ZCode: 打开数据库失败: {e}");
-            return UsageStats::default();
-        }
-    };
-
+/// 今日统计：在已有连接上执行查询（毫秒级时间戳）
+fn query_today(conn: &rusqlite::Connection) -> Result<UsageStats, rusqlite::Error> {
     let today_start = helper::today_start_epoch_ms();
-
-    let mut stmt = match conn.prepare(
+    let mut stmt = conn.prepare(
         "SELECT
             COALESCE(SUM(input_tokens), 0),
             COALESCE(SUM(output_tokens), 0),
@@ -42,26 +37,42 @@ pub fn get_today_stats() -> UsageStats {
             COALESCE(SUM(reasoning_tokens), 0),
             COUNT(*)
          FROM model_usage
-         WHERE started_at >= $1"
-    ) {
-        Ok(s) => s,
-        Err(e) => {
-            log::warn!("ZCode: 查询失败: {e}");
-            return UsageStats::default();
-        }
-    };
-
-    stmt.query_row(rusqlite::params![today_start], |row| {
+         WHERE started_at >= $1",
+    )?;
+    let stats = stmt.query_row(rusqlite::params![today_start], |row| {
         Ok(UsageStats {
             input_tokens: row.get(0)?,
             output_tokens: row.get(1)?,
             cache_read_tokens: row.get(2)?,
             cache_write_tokens: row.get(3)?,
             reasoning_tokens: row.get(4)?,
-            cost_usd: 0.0, // ZCode 无费用
+            cost_usd: 0.0,
             sessions: row.get(5)?,
         })
-    }).unwrap_or_default()
+    })?;
+    Ok(stats)
+}
+
+/// 今日诊断报告（含状态/路径/错误），get_today_stats 委托给它保证口径一致
+pub fn today_report() -> SourceReport {
+    let path = resolved_path();
+    let path_str = path.display().to_string();
+    if !path.exists() {
+        return SourceReport::not_found(SOURCE_ID, SOURCE_NAME, path_str);
+    }
+    let conn = match helper::open_read_only(&path) {
+        Ok(c) => c,
+        Err(e) => return SourceReport::error(SOURCE_ID, SOURCE_NAME, path_str, e),
+    };
+    match query_today(&conn) {
+        Ok(stats) => SourceReport::ok(SOURCE_ID, SOURCE_NAME, path_str, DETAIL, stats),
+        Err(e) => SourceReport::error(SOURCE_ID, SOURCE_NAME, path_str, e.to_string()),
+    }
+}
+
+/// 获取今日统计
+pub fn get_today_stats() -> UsageStats {
+    today_report().stats
 }
 
 /// 获取本周统计

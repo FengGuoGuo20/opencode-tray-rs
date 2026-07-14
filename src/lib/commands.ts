@@ -38,6 +38,25 @@ export interface ModelUsage {
   sessions: number;
 }
 
+/**
+ * 单个数据源的诊断报告（今日贡献 + 健康状态）。
+ */
+export interface SourceReport {
+  sourceId: string;
+  sourceName: string;
+  /** 解析后的数据源路径，供诊断 */
+  path: string;
+  pathExists: boolean;
+  /** 状态短码：ok / not_found / error */
+  status: string;
+  /** 状态文本：已连接 / 未找到 / 读取失败 */
+  statusText: string;
+  /** 失败原因 / 表名等补充信息 */
+  detailText: string;
+  stats: UsageStats;
+  totalTokens: number;
+}
+
 export interface MemoryInfo {
   usagePercent: number;
   totalGb: number;
@@ -49,12 +68,41 @@ export interface TrayDisplay {
   tokenText: string;
   memPercent: number;
   costText: string;
+  displayMode: string;
+}
+
+/**
+ * usage-updated 事件 payload。
+ * 携带今日完整字段，前端可直接更新"今日"卡，无需回查后端。
+ */
+export interface UsageUpdatedPayload {
+  tokenText: string;
+  memPercent: number;
+  displayMode: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  reasoningTokens: number;
+  sessions: number;
+  costUsd: number;
+}
+
+/**
+ * memory-updated 事件 payload。
+ */
+export interface MemoryUpdatedPayload {
+  memPercent: number;
 }
 
 export interface AppSettings {
   refreshIntervalSecs: number;
   trayDisplayMode: string;
   usdToCnyRate: number;
+  /** 开机自启 */
+  startWithWindows: boolean;
+  floatingBarLeft?: number | null;
+  floatingBarTop?: number | null;
   opencodeDbPath: string | null;
   ccswitchDbPath: string | null;
   workbuddyDirPath: string | null;
@@ -88,6 +136,10 @@ export async function getTodayModelStats(): Promise<ModelUsage[]> {
   return invoke<ModelUsage[]>("get_today_model_stats");
 }
 
+export async function getTodaySourceStats(): Promise<SourceReport[]> {
+  return invoke<SourceReport[]>("get_today_source_stats");
+}
+
 export async function getMemoryUsage(): Promise<MemoryInfo> {
   return invoke<MemoryInfo>("get_memory_usage");
 }
@@ -106,6 +158,10 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
 
 export async function showPanel(): Promise<void> {
   return invoke("show_panel");
+}
+
+export async function showSettings(): Promise<void> {
+  return invoke("show_settings");
 }
 
 export async function toggleFloatingBar(): Promise<void> {
