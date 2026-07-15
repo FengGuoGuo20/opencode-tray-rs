@@ -1,8 +1,27 @@
 {
   "name": "opencode-tray-rs",
-  "private": true,
   "version": "0.1.0",
   "type": "module",
+  "description": "一款轻量级系统托盘工具，实时监控 AI 编码助手的 Token 消耗量",
+  "license": "MIT",
+  "author": "OpenCodeTray Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FengGuoGuo20/opencode-tray-rs.git"
+  },
+  "homepage": "https://github.com/FengGuoGuo20/opencode-tray-rs#readme",
+  "bugs": {
+    "url": "https://github.com/FengGuoGuo20/opencode-tray-rs/issues"
+  },
+  "keywords": [
+    "tauri",
+    "rust",
+    "react",
+    "ai",
+    "token-usage",
+    "system-tray",
+    "opencode"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
