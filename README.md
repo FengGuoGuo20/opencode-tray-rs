@@ -52,6 +52,14 @@
 
 输入/输出 Token 趋势折线图、今日模型用量分布。
 
+### 悬浮条
+
+<p align="center">
+  <img src="./docs/screenshot-floating-bar.png" alt="悬浮条" title="透明置顶，始终可见">
+</p>
+
+透明置顶的迷你悬浮条，常驻屏幕一角，实时显示今日 Token 用量与内存占用，不遮挡工作区。
+
 ## 🚀 快速开始
 
 ### 前置要求
