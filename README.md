@@ -36,14 +36,21 @@
 
 ## 📸 截图
 
-<!-- 在此处添加截图，推荐使用相对路径 -->
-<!--
-![主面板](./docs/screenshot-panel.png)
-![悬浮条](./docs/screenshot-floating-bar.png)
-![设置](./docs/screenshot-settings.png)
--->
+### 主面板 — 统计概览
 
-> 📌 截图待补充，欢迎 PR！
+<p align="center">
+  <img src="./docs/screenshot-panel-overview.png" alt="主面板 - 统计概览" width="720">
+</p>
+
+统计卡片（今日 / 本周 / 本月 / 历史总计）、各数据源今日用量、每日活动热力图。
+
+### 主面板 — 趋势 & 模型分布
+
+<p align="center">
+  <img src="./docs/screenshot-panel-trends.png" alt="主面板 - 趋势与模型分布" width="720">
+</p>
+
+输入/输出 Token 趋势折线图、今日模型用量分布。
 
 ## 🚀 快速开始
 
